@@ -1,0 +1,82 @@
+# docker-compose.yml (UPDATE your existing file)
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: mediagent-n8n
+    ports:
+
+    
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=dhouha.meliane
+      - N8N_BASIC_AUTH_PASSWORD=243JFT0054*
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - WEBHOOK_URL=http://localhost:5678/
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./agents:/home/node/agents
+    depends_on:
+      - redis
+      - postgres
+
+  # NEW: Add Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: mediagent-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # NEW: Add PostgreSQL for data storage
+  postgres:
+    image: postgres:15
+    container_name: mediagent-postgres
+    environment:
+      - POSTGRES_DB=mediagent
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=mediagent2025
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # NEW: Add Ollama for local LLMs
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mediagent-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+  
+
+  data-agent:
+    build: ./agents/data_agent
+    container_name: mediagent-data-agent
+    ports:
+      - "5001:5001"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=mediagent
+      - DB_USER=admin
+      - DB_PASSWORD=mediagent2025
+    volumes:
+      - ./agents/data_agent:/app
+
+
+
+volumes:
+  n8n_data:
+  redis_data:
+  postgres_data:
+  ollama_data:
+  
